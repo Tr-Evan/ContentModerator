@@ -29,6 +29,7 @@ Bienvenue dans **ContentModerator**, une application puissante qui utilise **AWS
    ```bash
    ACCESS_KEY=ton_access_key
    SECRET_KEY=ta_secret_key
+   S3_BUCKET=nom_de_ton_s3
    ```
 
 4. **Lance l'application :**

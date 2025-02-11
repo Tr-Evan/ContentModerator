@@ -71,5 +71,3 @@ ContentModerator/
 ## 📄 Licence
 
 Ce projet est sous licence "pas touche la mouche".
-
----

@@ -11,23 +11,31 @@ if not os.path.exists(UPLOAD_DIR):
 # Chargement des variables d'environnement
 load_dotenv()
 
+# Initialisation des credentials dans la session si non présents
+if 'aws_access_key' not in st.session_state:
+    st.session_state.aws_access_key = ""
+if 'aws_secret_key' not in st.session_state:
+    st.session_state.aws_secret_key = ""
+if 's3_bucket_name' not in st.session_state:
+    st.session_state.s3_bucket_name = ""
+
 # Barre latérale pour la configuration AWS
 st.sidebar.header("⚙️ Configuration")
 
 # Option pour charger les credentials depuis un fichier .env
 if st.sidebar.button("📥 Charger credentials depuis .env"):
-    aws_access_key = os.getenv("ACCESS_KEY")
-    aws_secret_key = os.getenv("SECRET_KEY")
-    s3_bucket_name = os.getenv("S3_BUCKET", "")
+    st.session_state.aws_access_key = os.getenv("ACCESS_KEY", "")
+    st.session_state.aws_secret_key = os.getenv("SECRET_KEY", "")
+    st.session_state.s3_bucket_name = os.getenv("S3_BUCKET", "")
     st.sidebar.success("Clés AWS chargées depuis .env")
-else:
-    # Champs pour les credentials AWS (saisie manuelle)
-    aws_access_key = st.sidebar.text_input("🔑 Access Key", type="password")
-    aws_secret_key = st.sidebar.text_input("🔒 Secret Key", type="password")
-    s3_bucket_name = st.sidebar.text_input("🗂️ Nom du bucket S3", "")
+
+# Champs pour les credentials AWS (saisie manuelle)
+st.session_state.aws_access_key = st.sidebar.text_input("🔑 Access Key", value=st.session_state.aws_access_key, type="password")
+st.session_state.aws_secret_key = st.sidebar.text_input("🔒 Secret Key", value=st.session_state.aws_secret_key, type="password")
+st.session_state.s3_bucket_name = st.sidebar.text_input("🗂️ Nom du bucket S3", value=st.session_state.s3_bucket_name)
 
 # Vérification des credentials
-if not aws_access_key or not aws_secret_key or not s3_bucket_name:
+if not st.session_state.aws_access_key or not st.session_state.aws_secret_key or not st.session_state.s3_bucket_name:
     st.warning("⚠️ Veuillez configurer vos credentials AWS dans la barre latérale")
 else:
     # Titre de l'application

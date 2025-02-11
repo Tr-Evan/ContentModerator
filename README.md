@@ -49,7 +49,7 @@ Bienvenue dans **ContentModerator**, une application puissante qui utilise **AWS
 ContentModerator/
 ├── app.py              # Application Streamlit
 ├── moderation.py       # Logique de modération avec AWS Rekognition
-├── uploads/          # Images / vidéos uploadé
+├── uploads/            # Images / vidéos uploadé
 ├── .env                # Variables d'environnement
 └── requirements.txt    # Dépendances Python
 ```

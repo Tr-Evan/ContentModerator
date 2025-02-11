@@ -73,6 +73,3 @@ ContentModerator/
 Ce projet est sous licence "pas touche la mouche".
 
 ---
-
-✨ Fait avec ❤️ par Audrey et Evan ✨
-

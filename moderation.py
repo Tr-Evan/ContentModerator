@@ -35,7 +35,6 @@ rekognition = aws_session.client('rekognition',region_name=REGION_NAME)
 transcribe = aws_session.client('transcribe',region_name=REGION_NAME)
 comprehend = aws_session.client('comprehend',region_name=REGION_NAME)
 
-
 def check_filetype(filename):
  # Extrait le nom de base du fichier à partir du chemin de fichier fourni.
     file_basename = os.path.basename(filename)

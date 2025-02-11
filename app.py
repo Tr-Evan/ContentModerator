@@ -11,6 +11,17 @@ if not os.path.exists(UPLOAD_DIR):
 # Chargement des variables d'environnement
 load_dotenv()
 
+def update_env_file(access_key, secret_key, bucket_name):
+    env_file = ".env"
+    env_data = [
+        f"ACCESS_KEY={access_key}\n",
+        f"SECRET_KEY={secret_key}\n",
+        f"S3_BUCKET={bucket_name}\n"
+    ]
+
+    with open(env_file, "w") as f:
+        f.writelines(env_data)
+
 # Initialisation des credentials dans la session si non présents
 if 'aws_access_key' not in st.session_state:
     st.session_state.aws_access_key = ""
@@ -24,15 +35,16 @@ st.sidebar.header("⚙️ Configuration")
 
 # Option pour charger les credentials depuis un fichier .env
 if st.sidebar.button("📥 Charger credentials depuis .env"):
-    st.session_state.aws_access_key = os.getenv("ACCESS_KEY", "")
-    st.session_state.aws_secret_key = os.getenv("SECRET_KEY", "")
-    st.session_state.s3_bucket_name = os.getenv("S3_BUCKET", "")
+    st.session_state.aws_access_key = os.getenv("ACCESS_KEY")
+    st.session_state.aws_secret_key = os.getenv("SECRET_KEY")
+    st.session_state.s3_bucket_name = os.getenv("S3_BUCKET")
     st.sidebar.success("Clés AWS chargées depuis .env")
 
 # Champs pour les credentials AWS (saisie manuelle)
 st.session_state.aws_access_key = st.sidebar.text_input("🔑 Access Key", value=st.session_state.aws_access_key, type="password")
 st.session_state.aws_secret_key = st.sidebar.text_input("🔒 Secret Key", value=st.session_state.aws_secret_key, type="password")
 st.session_state.s3_bucket_name = st.sidebar.text_input("🗂️ Nom du bucket S3", value=st.session_state.s3_bucket_name)
+update_env_file(st.session_state.aws_access_key, st.session_state.aws_secret_key, st.session_state.s3_bucket_name)
 
 # Vérification des credentials
 if not st.session_state.aws_access_key or not st.session_state.aws_secret_key or not st.session_state.s3_bucket_name:
@@ -54,37 +66,29 @@ else:
         with open(file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
-        st.info(f"Fichier reçu : {uploaded_file.name}")
-
         # Bouton pour lancer la modération
         if st.button("🚀 Lancer la modération"):
             with st.spinner("Analyse en cours..."):
                 result = process_media(file_path)
-
             # Affichage des résultats
-            if 'ModerationLabels' in result and result['ModerationLabels']:
-                st.error("⚠️ Contenu inapproprié détecté :")
-                for label in result['ModerationLabels']:
-                    st.write(f"- {label['Name']} ({label['Confidence']:.2f}% de confiance)")
-
-                st.write("### Thèmes sensibles détectés :")
-                for label in result['ModerationLabels']:
-                    st.write(f"- {label['Name']}")
+            if 'sensitize' in result and result['sensitize']:
+                st.error("### ⚠️ Contenu inapproprié détecté")
+                st.error("Thèmes sensibles détectés :")
+                for label in result['sensitize']:
+                    st.write(f"⚠️ {label['Name']}")
             else:
                 st.success("✅ Aucun contenu inapproprié détecté.")
-
                 # Affichage du contenu approprié
-                st.write("### Contenu approprié :")
                 if uploaded_file.type.startswith("image"):
-                    st.image(file_path, caption='Contenu téléchargé', use_column_width=True)
+                    st.image(file_path, use_container_width=True)
                 elif uploaded_file.type.startswith("video"):
                     st.video(file_path)
 
+                for hashtag in result['hashtags']:
+                    st.write(f"{hashtag}")
                 # Exemple de hashtags générés automatiquement
-                st.write("#### Hashtags générés automatiquement :")
-                st.write("#Happy #People #Friends #Fun")
 
                 # Option de voir la transcription pour les vidéos
                 if uploaded_file.type.startswith("video"):
-                    st.write("#### Transcription de la vidéo :")
-                    st.text_area("Transcription", "Transcription de la vidéo...", height=200)
+                    with st.expander("Voir la transcription"):
+                        st.write(result['subtitles'])

@@ -1,4 +1,5 @@
 import boto3
+import streamlit as st
 import cv2
 import os
 import tempfile
@@ -13,27 +14,29 @@ from dotenv import load_dotenv
 from collections import Counter
 from botocore.exceptions import ClientError
 
-# Charger les variables d'environnement depuis le fichier .env
-load_dotenv()
+def get_aws_session():
+    # Charge les variables d'environnement depuis .env.
+    load_dotenv()
+    REGION_NAME = 'us-east-1'
+    ACCESS_KEY = st.session_state.aws_access_key
+    SECRET_KEY = st.session_state.aws_secret_key
+    S3_BUCKET = st.session_state.s3_bucket_name
 
-# Récupérer les clés AWS depuis les variables d'environnement
-S3_BUCKET = os.getenv('S3_BUCKET')
-REGION_NAME = 'us-east-1'
+    # Crée une session AWS avec les clés d'accès et la région définies dans les variables d'environnement.
+    aws_session = boto3.Session(
+        aws_access_key_id=ACCESS_KEY,    
+        aws_secret_access_key=SECRET_KEY,
+        region_name=REGION_NAME                   
+    )
+    s3 = aws_session.client('s3')
 
-#Initialisation de la session AWS avec les clés
-aws_session = boto3.Session(
-    aws_access_key_id=os.getenv("ACCESS_KEY"),
-    aws_secret_access_key=os.getenv("SECRET_KEY"),
-)
-s3 = aws_session.client('s3')
+    rekognition = aws_session.client('rekognition',region_name=REGION_NAME)
+    transcribe = aws_session.client('transcribe',region_name=REGION_NAME)
+    comprehend = aws_session.client('comprehend',region_name=REGION_NAME)
 
-#Initalisation du bucket et configuration
-s3.create_bucket(Bucket=S3_BUCKET)
+    print(s3)
 
-#Initalisation des services AWS
-rekognition = aws_session.client('rekognition',region_name=REGION_NAME)
-transcribe = aws_session.client('transcribe',region_name=REGION_NAME)
-comprehend = aws_session.client('comprehend',region_name=REGION_NAME)
+    return rekognition, transcribe, comprehend, s3, S3_BUCKET
 
 def check_filetype(filename):
  # Extrait le nom de base du fichier à partir du chemin de fichier fourni.
@@ -49,9 +52,6 @@ def check_filetype(filename):
         filetype = "vidéo"
     else:
         filetype = None
-
-    # Enregistre le type de fichier détecté.
-    print(f"[INFO] : Le fichier {file_basename} est de type : {filetype}")
     
     return filetype
 
@@ -69,21 +69,21 @@ def extract_frame_video(video_path, frame_id):
     # Sinon, retourne None.
     return image if success else None
 
-def moderate_image(image_path):
+def moderate_image(image_path, aws_service):
     """Utilise AWS Rekognition pour détecter du contenu inapproprié."""
     with open(image_path, 'rb') as image_file:
-        response = rekognition.detect_moderation_labels(
+        response = aws_service.detect_moderation_labels(
             Image={'Bytes': image_file.read()}
         )
     return response.get('ModerationLabels', [])
 
-def detect_objects(image_path):
+def detect_objects(image_path, aws_service):
     with open(image_path, 'rb') as image_file:
         # Charger l'image
         image_bytes = image_file.read()
 
     # Utiliser AWS Rekognition pour détecter les objets dans l'image
-    response = rekognition.detect_labels(
+    response = aws_service.detect_labels(
         Image={'Bytes': image_bytes},
         MinConfidence=50  # Filtrer les résultats avec une confiance minimale de 50%
     )
@@ -96,12 +96,12 @@ def detect_objects(image_path):
 
     return objects
 
-def detect_celebrities(image_path):
+def detect_celebrities(image_path, aws_service):
     with open(image_path, 'rb') as image_file:
         # Lire l'image
         image_bytes = image_file.read()
 
-    response = rekognition.recognize_celebrities(
+    response = aws_service.recognize_celebrities(
         Image={'Bytes': image_bytes}
     )
 
@@ -109,13 +109,13 @@ def detect_celebrities(image_path):
 
     return celebrities[:10]
 
-def detect_emotions(image_path):
+def detect_emotions(image_path, aws_service):
     with open(image_path, 'rb') as image_file:
         # Lire l'image
         image_bytes = image_file.read()
 
     # Utiliser Rekognition pour détecter les visages et leurs attributs
-    response = rekognition.detect_faces(
+    response = aws_service.detect_faces(
         Image={'Bytes': image_bytes},
         Attributes=['ALL']  # Demander tous les attributs, y compris les émotions
     )
@@ -211,23 +211,23 @@ def summarize_emotions(faces_info):
 
     return summary
 
-def get_text_from_speech(filename, job_name):
+def get_text_from_speech(filename, job_name, bucket_name, aws_service):
     filename = filename.split('/')[-1]
 
-    file_uri = f"s3://{S3_BUCKET}/{filename}"
+    file_uri = f"s3://{bucket_name}/{filename}"
 
     
-    transcribe.start_transcription_job(
+    aws_service.start_transcription_job(
         TranscriptionJobName=job_name,
         Media={'MediaFileUri': file_uri},
         MediaFormat=filename.split('.')[-1], 
         LanguageCode="fr-FR",  
-        OutputBucketName=S3_BUCKET
+        OutputBucketName=bucket_name
     )
 
     # Attendre que la transcription soit terminée
     while True:
-        response = transcribe.get_transcription_job(TranscriptionJobName=job_name)
+        response = aws_service.get_transcription_job(TranscriptionJobName=job_name)
         status = response["TranscriptionJob"]["TranscriptionJobStatus"]
         if status in ["COMPLETED", "FAILED"]:
             break
@@ -256,8 +256,8 @@ def clean_text(raw_text):
     # Retourner le texte nettoyé sous forme de chaîne
     return ' '.join(filtered_tokens)
 
-def extract_keyphrases(text):
-    response = comprehend.detect_key_phrases(
+def extract_keyphrases(text, aws_service):
+    response = aws_service.detect_key_phrases(
         Text=text,
         LanguageCode='fr'
     )
@@ -271,23 +271,24 @@ def extract_keyphrases(text):
     return hashtags
 
 def process_media(media_file):
+    rekognition, transcribe, comprehend, s3, bucket_name = get_aws_session()
+
     media_type = check_filetype(media_file)
-    # Si c'est une image
+
     if media_type == 'image':
         # Modération de l'image
-        moderation_result = moderate_image(media_file)
+        moderation_result = moderate_image(media_file, rekognition)
         if moderation_result:
             return {'sensitize': moderation_result}
 
-        # Utilisation d'un set pour éviter les doublons
         hashtags = set()
 
         # Détecter les objets dans l'image et les ajouter en hashtags
-        objects = detect_objects(media_file)
+        objects = detect_objects(media_file, rekognition)
         hashtags.update(f"#{obj.lower()}" for obj in objects)
 
         # Détecter les émotions des visages dans l'image
-        emotions = detect_emotions(media_file)
+        emotions = detect_emotions(media_file, rekognition)
         summary = summarize_emotions(emotions)
 
         # Ajouter l'émotion dominante sous forme de hashtag
@@ -295,12 +296,11 @@ def process_media(media_file):
             hashtags.add(f"#{summary['dominant_emotion'].lower()}")
 
         # Détecter les célébrités dans l'image
-        celebrities = detect_celebrities(media_file)
+        celebrities = detect_celebrities(media_file, rekognition)
         hashtags.update(f"#{celeb.replace(' ', '').lower()}" for celeb in celebrities)
 
-        print(list(hashtags))
         return {'hashtags': list(hashtags)}
-    # Si c'est une vidéo
+
     elif media_type == 'vidéo':
         first_frame = extract_frame_video(media_file, 0)
         
@@ -309,7 +309,7 @@ def process_media(media_file):
             cv2.imwrite(temp_img_path, first_frame)
 
 
-        moderation_result = moderate_image(temp_img_path)
+        moderation_result = moderate_image(temp_img_path, rekognition)
         
         if moderation_result:
             os.remove(temp_img_path)
@@ -326,16 +326,14 @@ def process_media(media_file):
 
         # Ajouter le timestamp avant l'extension
         video_filename = f"{video_name}_{timestamp}{video_ext}" 
-        print(video_filename)
 
-        s3.upload_file(media_file, S3_BUCKET, video_filename)
+        #Création du bucket et stockage du fichier
+        s3.create_bucket(Bucket=bucket_name)
+        s3.upload_file(media_file, bucket_name, video_filename)
 
-        transcript_text = get_text_from_speech(video_filename, job_name)
-        print(transcript_text)
-        
+        # Transcription de la vidéo, nettoyage du text, et extraction des mot clé
+        transcript_text = get_text_from_speech(video_filename, job_name, bucket_name, transcribe)
         cleaned_text = clean_text(transcript_text)
-        print(cleaned_text)
-        
-        key_phrases = extract_keyphrases(cleaned_text)
+        key_phrases = extract_keyphrases(cleaned_text, comprehend)
         
         return {'subtitles': transcript_text , 'hashtags': list(set(key_phrases))}

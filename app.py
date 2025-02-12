@@ -1,26 +1,14 @@
 import streamlit as st
 from moderation import process_media
+from moderation import get_aws_session
 import os
+import time
 from dotenv import load_dotenv
 
 # Initialisation du dossier d'upload
 UPLOAD_DIR = "uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
-
-# Chargement des variables d'environnement
-load_dotenv()
-
-def update_env_file(access_key, secret_key, bucket_name):
-    env_file = ".env"
-    env_data = [
-        f"ACCESS_KEY={access_key}\n",
-        f"SECRET_KEY={secret_key}\n",
-        f"S3_BUCKET={bucket_name}\n"
-    ]
-
-    with open(env_file, "w") as f:
-        f.writelines(env_data)
 
 # Initialisation des credentials dans la session si non présents
 if 'aws_access_key' not in st.session_state:
@@ -35,16 +23,37 @@ st.sidebar.header("⚙️ Configuration")
 
 # Option pour charger les credentials depuis un fichier .env
 if st.sidebar.button("📥 Charger credentials depuis .env"):
+    load_dotenv()
     st.session_state.aws_access_key = os.getenv("ACCESS_KEY")
     st.session_state.aws_secret_key = os.getenv("SECRET_KEY")
     st.session_state.s3_bucket_name = os.getenv("S3_BUCKET")
     st.sidebar.success("Clés AWS chargées depuis .env")
 
 # Champs pour les credentials AWS (saisie manuelle)
-st.session_state.aws_access_key = st.sidebar.text_input("🔑 Access Key", value=st.session_state.aws_access_key, type="password")
-st.session_state.aws_secret_key = st.sidebar.text_input("🔒 Secret Key", value=st.session_state.aws_secret_key, type="password")
-st.session_state.s3_bucket_name = st.sidebar.text_input("🗂️ Nom du bucket S3", value=st.session_state.s3_bucket_name)
-update_env_file(st.session_state.aws_access_key, st.session_state.aws_secret_key, st.session_state.s3_bucket_name)
+new_access_key = st.sidebar.text_input("🔑 Access Key", value=st.session_state.aws_access_key, type="password")
+new_secret_key = st.sidebar.text_input("🔒 Secret Key", value=st.session_state.aws_secret_key, type="password")
+new_s3_bucket = st.sidebar.text_input("🗂️ Nom du bucket S3", value=st.session_state.s3_bucket_name)
+print(new_access_key, st.session_state.aws_access_key)
+
+if st.sidebar.button("Appliquer les changements"):
+    if (new_access_key != st.session_state.aws_access_key or
+        new_secret_key != st.session_state.aws_secret_key or
+        new_s3_bucket != st.session_state.s3_bucket_name):
+
+        # Mettre à jour les variables
+        st.session_state.aws_access_key = new_access_key
+        st.session_state.aws_secret_key = new_secret_key
+        st.session_state.s3_bucket_name = new_s3_bucket
+        print(st.session_state.aws_access_key)
+
+        # Mettre à jour le fichier `.env`
+        with open(".env", "w") as f:
+            f.write(f"ACCESS_KEY={new_access_key}\n")
+            f.write(f"SECRET_KEY={new_secret_key}\n")
+            f.write(f"S3_BUCKET={new_s3_bucket}\n")
+
+        st.success("🔄 Changement détecté ! Redémarrage en cours...")
+        time.sleep(1)
 
 # Vérification des credentials
 if not st.session_state.aws_access_key or not st.session_state.aws_secret_key or not st.session_state.s3_bucket_name:

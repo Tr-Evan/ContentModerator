@@ -130,7 +130,7 @@ else:
                     hashtags_html = "".join([f'<span class="hashtag">{hashtag}</span>' for hashtag in result['hashtags']])
                     st.markdown(hashtags_html, unsafe_allow_html=True)
 
-                # Option de voir la transcription pour les vidéos
+               # Option de voir la transcription pour les vidéos
                 if uploaded_file.type.startswith("video"):
-                    st.write("#### Transcription de la vidéo :")
-                    st.text_area("Transcription", "Transcription de la vidéo...", height=200)
+                    with st.expander("Voir la transcription"):
+                        st.write(result['subtitles'])

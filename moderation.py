@@ -22,7 +22,7 @@ def get_aws_session():
     SECRET_KEY = st.session_state.aws_secret_key
     S3_BUCKET = st.session_state.s3_bucket_name
 
-    # Crée une session AWS avec les clés d'accès et la région définies dans les variables d'environnement.
+    # CrÃ©e une session AWS avec les clÃ©s d'accÃ¨s et la rÃ©gion dÃ©finies dans les variables d'environnement.
     aws_session = boto3.Session(
         aws_access_key_id=ACCESS_KEY,    
         aws_secret_access_key=SECRET_KEY,
@@ -39,38 +39,38 @@ def get_aws_session():
     return rekognition, transcribe, comprehend, s3, S3_BUCKET
 
 def check_filetype(filename):
- # Extrait le nom de base du fichier à partir du chemin de fichier fourni.
+ # Extrait le nom de base du fichier Ã  partir du chemin de fichier fourni.
     file_basename = os.path.basename(filename)
 
-    # Sépare le nom de base sur le point et prend la dernière partie comme extension.
+    # SÃ©pare le nom de base sur le point et prend la derniÃ¨re partie comme extension.
     extension = file_basename.split(".")[-1]
 
-    # Détermine le type de fichier en fonction de l'extension.
+    # DÃ©termine le type de fichier en fonction de l'extension.
     if extension in ["jpg", "png", "tiff", "svg"]:
         filetype = "image"
     elif extension in ["mp4", "avi", "mkv"]:
-        filetype = "vidéo"
+        filetype = "vidÃ©o"
     else:
         filetype = None
     
     return filetype
 
 def extract_frame_video(video_path, frame_id):
-    # Ouvre la vidéo à partir du chemin fourni.
+    # Ouvre la vidÃ©o Ã  partir du chemin fourni.
     video = cv2.VideoCapture(video_path)
 
-    # Positionne le lecteur vidéo sur l'image spécifiée par frame_id.
+    # Positionne le lecteur vidÃ©o sur l'image spÃ©cifiÃ©e par frame_id.
     video.set(cv2.CAP_PROP_POS_FRAMES, frame_id)
 
     # Lit l'image actuelle.
     success, image = video.read()
 
-    # Si la lecture réussit (ret est True), retourne l'image.
+    # Si la lecture rÃ©ussit (ret est True), retourne l'image.
     # Sinon, retourne None.
     return image if success else None
 
 def moderate_image(image_path, aws_service):
-    """Utilise AWS Rekognition pour détecter du contenu inapproprié."""
+    """Utilise AWS Rekognition pour dÃ©tecter du contenu inappropriÃ©."""
     with open(image_path, 'rb') as image_file:
         response = aws_service.detect_moderation_labels(
             Image={'Bytes': image_file.read()}
@@ -82,17 +82,17 @@ def detect_objects(image_path, aws_service):
         # Charger l'image
         image_bytes = image_file.read()
 
-    # Utiliser AWS Rekognition pour détecter les objets dans l'image
+    # Utiliser AWS Rekognition pour dÃ©tecter les objets dans l'image
     response = aws_service.detect_labels(
         Image={'Bytes': image_bytes},
-        MinConfidence=50  # Filtrer les résultats avec une confiance minimale de 50%
+        MinConfidence=50  # Filtrer les rÃ©sultats avec une confiance minimale de 50%
     )
 
     # Extraire les labels et trier par leur confiance
     labels = response['Labels']
 
     # Extraire les 10 premiers objets avec la plus grande confiance
-    objects = [label['Name'] for label in labels[:10]]  # Limiter à 10 objets
+    objects = [label['Name'] for label in labels[:10]]  # Limiter Ã  10 objets
 
     return objects
 
@@ -114,35 +114,35 @@ def detect_emotions(image_path, aws_service):
         # Lire l'image
         image_bytes = image_file.read()
 
-    # Utiliser Rekognition pour détecter les visages et leurs attributs
+    # Utiliser Rekognition pour dÃ©tecter les visages et leurs attributs
     response = aws_service.detect_faces(
         Image={'Bytes': image_bytes},
-        Attributes=['ALL']  # Demander tous les attributs, y compris les émotions
+        Attributes=['ALL']  # Demander tous les attributs, y compris les Ã©motions
     )
 
     faces_info = []
 
-    # Parcourir les visages détectés dans la réponse
+    # Parcourir les visages dÃ©tectÃ©s dans la rÃ©ponse
     for face in response['FaceDetails']:
         face_data = {}
 
-        # Récupérer le genre et la confiance associée
+        # RÃ©cupÃ©rer le genre et la confiance associÃ©e
         face_data['Gender'] = {
             'Value': face['Gender']['Value'],
             'Confidence': face['Gender']['Confidence']
         }
 
-        # Récupérer la plage d'âge estimée
+        # RÃ©cupÃ©rer la plage d'Ã¢ge estimÃ©e
         face_data['AgeRange'] = {
             'Low': face['AgeRange']['Low'],
             'High': face['AgeRange']['High']
         }
 
-        # Récupérer les émotions et leur niveau de confiance
-        emotions = sorted(face['Emotions'], key=lambda x: x['Confidence'], reverse=True)[:3]  # Top 3 émotions
+        # RÃ©cupÃ©rer les Ã©motions et leur niveau de confiance
+        emotions = sorted(face['Emotions'], key=lambda x: x['Confidence'], reverse=True)[:3]  # Top 3 Ã©motions
         face_data['Emotions'] = [{'Type': emotion['Type'], 'Confidence': emotion['Confidence']} for emotion in emotions]
 
-        # Ajouter les informations du visage à la liste
+        # Ajouter les informations du visage Ã  la liste
         faces_info.append(face_data)
 
     return faces_info
@@ -154,46 +154,46 @@ def summarize_emotions(faces_info):
     emotion_confidences = {}
     gender_distribution = {'Male': 0, 'Female': 0}
 
-    # Variables pour stocker les émotions dominantes
+    # Variables pour stocker les Ã©motions dominantes
     dominant_emotion = None
     max_emotion_confidence = 0
     
-    # Parcourir les visages détectés
+    # Parcourir les visages dÃ©tectÃ©s
     for face in faces_info:
         # Analyser le genre
         gender = face['Gender']['Value']
         gender_distribution[gender] += 1
         
-        # Analyser l'âge (calcul de la moyenne du range)
+        # Analyser l'Ã¢ge (calcul de la moyenne du range)
         age_min = face['AgeRange']['Low']
         age_max = face['AgeRange']['High']
         age_range['total'] += (age_min + age_max) / 2
         age_range['min'] = min(age_range['min'], age_min)
         age_range['max'] = max(age_range['max'], age_max)
         
-        # Analyser les émotions (avec confiance > 50%)
+        # Analyser les Ã©motions (avec confiance > 50%)
         for emotion in face['Emotions']:
             if emotion['Confidence'] > 50:
                 emotion_type = emotion['Type']
                 emotion_confidences[emotion_type] = emotion_confidences.get(emotion_type, 0) + emotion['Confidence']
                 emotions_counter[emotion_type] += 1
 
-                # Déterminer l'émotion dominante (celle avec la plus haute confiance)
+                # DÃ©terminer l'Ã©motion dominante (celle avec la plus haute confiance)
                 if emotion['Confidence'] > max_emotion_confidence:
                     max_emotion_confidence = emotion['Confidence']
                     dominant_emotion = emotion_type
 
-    # Calcul de la confiance moyenne des émotions
+    # Calcul de la confiance moyenne des Ã©motions
     for emotion in emotions_counter:
         emotion_confidences[emotion] /= emotions_counter[emotion]
     
-    # Calcul de la moyenne d'âge
+    # Calcul de la moyenne d'Ã¢ge
     if total_faces > 0:
         average_age = age_range['total'] / total_faces
     else:
         average_age = None
 
-    # Résumé des statistiques
+    # RÃ©sumÃ© des statistiques
     summary = {
         'total_faces': total_faces,
         'dominant_emotion': dominant_emotion,
@@ -225,18 +225,18 @@ def get_text_from_speech(filename, job_name, bucket_name, aws_service):
         OutputBucketName=bucket_name
     )
 
-    # Attendre que la transcription soit terminée
+    # Attendre que la transcription soit terminÃ©e
     while True:
         response = aws_service.get_transcription_job(TranscriptionJobName=job_name)
         status = response["TranscriptionJob"]["TranscriptionJobStatus"]
         if status in ["COMPLETED", "FAILED"]:
             break
-        time.sleep(5)  # Attente de 5 secondes avant de vérifier à nouveau
+        time.sleep(5)  # Attente de 5 secondes avant de vÃ©rifier Ã  nouveau
 
     if status == "FAILED":
-        raise Exception("La transcription a échoué.")
+        raise Exception("La transcription a Ã©chouÃ©.")
 
-    # Récupérer l'URL du fichier JSON contenant la transcription
+    # RÃ©cupÃ©rer l'URL du fichier JSON contenant la transcription
     transcript_url = response["TranscriptionJob"]["Transcript"]["TranscriptFileUri"]
     with urllib.request.urlopen(transcript_url) as url:
         data = json.loads(url.read().decode())
@@ -247,13 +247,13 @@ def clean_text(raw_text):
     tokenizer = RegexpTokenizer(r'\w+')
     tokens = tokenizer.tokenize(raw_text.lower())  # Convertir en minuscules et tokeniser
 
-    # Charger les stop words en français
+    # Charger les stop words en franÃ§ais
     stop_words = set(stopwords.words('french'))
 
     # Filtrer les tokens en enlevant les mots vides
     filtered_tokens = [word for word in tokens if word not in stop_words]
 
-    # Retourner le texte nettoyé sous forme de chaîne
+    # Retourner le texte nettoyÃ© sous forme de chaÃ®ne
     return ' '.join(filtered_tokens)
 
 def extract_keyphrases(text, aws_service):
@@ -276,32 +276,32 @@ def process_media(media_file):
     media_type = check_filetype(media_file)
 
     if media_type == 'image':
-        # Modération de l'image
+        # ModÃ©ration de l'image
         moderation_result = moderate_image(media_file, rekognition)
         if moderation_result:
             return {'sensitize': moderation_result}
 
         hashtags = set()
 
-        # Détecter les objets dans l'image et les ajouter en hashtags
+        # DÃ©tecter les objets dans l'image et les ajouter en hashtags
         objects = detect_objects(media_file, rekognition)
         hashtags.update(f"#{obj.lower()}" for obj in objects)
 
-        # Détecter les émotions des visages dans l'image
+        # DÃ©tecter les Ã©motions des visages dans l'image
         emotions = detect_emotions(media_file, rekognition)
         summary = summarize_emotions(emotions)
 
-        # Ajouter l'émotion dominante sous forme de hashtag
+        # Ajouter l'Ã©motion dominante sous forme de hashtag
         if summary["dominant_emotion"]:
             hashtags.add(f"#{summary['dominant_emotion'].lower()}")
 
-        # Détecter les célébrités dans l'image
+        # DÃ©tecter les cÃ©lÃ©britÃ©s dans l'image
         celebrities = detect_celebrities(media_file, rekognition)
         hashtags.update(f"#{celeb.replace(' ', '').lower()}" for celeb in celebrities)
 
         return {'hashtags': list(hashtags)}
 
-    elif media_type == 'vidéo':
+    elif media_type == 'vidÃ©o':
         first_frame = extract_frame_video(media_file, 0)
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_img_file:
@@ -327,11 +327,11 @@ def process_media(media_file):
         # Ajouter le timestamp avant l'extension
         video_filename = f"{video_name}_{timestamp}{video_ext}" 
 
-        #Création du bucket et stockage du fichier
+        #CrÃ©ation du bucket et stockage du fichier
         s3.create_bucket(Bucket=bucket_name)
         s3.upload_file(media_file, bucket_name, video_filename)
 
-        # Transcription de la vidéo, nettoyage du text, et extraction des mot clé
+        # Transcription de la vidÃ©o, nettoyage du text, et extraction des mot clÃ©
         transcript_text = get_text_from_speech(video_filename, job_name, bucket_name, transcribe)
         cleaned_text = clean_text(transcript_text)
         key_phrases = extract_keyphrases(cleaned_text, comprehend)

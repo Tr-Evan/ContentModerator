@@ -59,6 +59,23 @@ ContentModerator/
 - Un compte AWS actif
 - Service AWS Rekognition activé
 - Clés d'API configurées dans le fichier `.env`
+- Configurer le S3 Bucket (region : us-est-1)
+   Dans l'onglet "Autorisations"
+   - Débloquer les accées public
+   - Ajouter le code dans "Stratégie de compartiment"
+```
+      {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::contentmoderator-sdv-2025/*"
+        }
+    ]
+}
+```
 
 ## 🤝 Contribuer
 

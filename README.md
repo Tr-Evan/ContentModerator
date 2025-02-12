@@ -6,7 +6,6 @@ Bienvenue dans **ContentModerator**, une application puissante qui utilise **AWS
 
 - 📷 **Analyse d'images** : Détection de contenu sensible via AWS Rekognition.
 - 🎥 **Analyse de vidéos** : Extraction d'images clés pour une modération efficace.
-- 📝 **Analyse de texte** : Traitement de fichiers texte pour repérer des contenus inappropriés.
 - 📊 **Interface intuitive** : Interface interactive créée avec Streamlit pour une expérience utilisateur optimale.
 
 ## 🔧 Installation

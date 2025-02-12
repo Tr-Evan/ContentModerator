@@ -52,7 +52,7 @@ if not st.session_state.aws_access_key or not st.session_state.aws_secret_key or
 else:
     # Titre de l'application
     st.title("📸 Content Moderator Pro")
-    st.subheader("Analysez et modérez votre contenu en un clic!")
+    st.subheader("Analysez et modérez votre contenu en un clic !")
 
     # Téléchargement de fichier
     uploaded_file = st.file_uploader("📤 Choisissez un fichier (image ou vidéo)", type=["jpg", "jpeg", "png", "mp4", "avi"])

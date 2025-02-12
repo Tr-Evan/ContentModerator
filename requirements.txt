@@ -1,4 +1,7 @@
 streamlit
 boto3
-opencv-python
 python-dotenv
+opencv-python
+nltk
+Pillow
+botocore
